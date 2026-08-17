@@ -1,7 +1,6 @@
-# UCS503P Project Template
+# Welcome to BrofessorCode
 
-This is a project template for UCS503P Project (2026-27
-ODD). 
+It is a multi-agent system that reviews every pull request as a whole and blocks dangerous code
 
 There are 3 reports in LaTeX format, namely *a*)
 Project Proposal, *b*) Project Report Prototype Stage,

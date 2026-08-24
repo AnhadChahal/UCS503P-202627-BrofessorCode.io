@@ -1,9 +1,6 @@
 # Architecture
 
 ## System Architecture
-
-The following diagram illustrates the high-level architecture of our multi-agent deployment safety system.
-
 ![System Architecture](docs/diagram.jpg)
 
 ## Architecture Overview

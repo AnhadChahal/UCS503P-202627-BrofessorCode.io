@@ -1,7 +1,7 @@
 # Architecture
 
 ## System Architecture
-![System Architecture](docs/diagram.jpg)
+![System Architecture](docs/diagram.drawio.svg)
 
 ## Architecture Overview
 

@@ -2,7 +2,7 @@
 {% block title %}Runs{% endblock %}
 {% block head %}<meta http-equiv="refresh" content="5">{% endblock %}
 {% block content %}
-<h2>Runs <small style="font-weight:400;color:#666">(refreshes every 5 s)</small></h2>
+<h2>Runs <small class="sub">(refreshes every 5 s)</small></h2>
 <p class="filters">
   <a href="{{ url_for('runs') }}">{% if not status %}<strong>All</strong>{% else %}All{% endif %}</a>
   {% for s in statuses %}

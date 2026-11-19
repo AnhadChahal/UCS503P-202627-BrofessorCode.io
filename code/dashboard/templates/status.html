@@ -2,7 +2,7 @@
 {% block title %}Status{% endblock %}
 {% block head %}<meta http-equiv="refresh" content="10">{% endblock %}
 {% block content %}
-<h2>System status <small style="font-weight:400;color:#666">(refreshes every 10 s)</small></h2>
+<h2>System status <small class="sub">(refreshes every 10 s)</small></h2>
 
 <div class="box">
   <h3>Review worker</h3>
@@ -32,6 +32,6 @@
 
 <div class="box">
   <h3>Settings in effect</h3>
-  <table>{% for k, v in info.settings.items() %}<tr><th style="width:30%">{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
+  <table>{% for k, v in info.settings.items() %}<tr><th class="key">{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
 </div>
 {% endblock %}

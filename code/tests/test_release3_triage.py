@@ -11,6 +11,8 @@ from tests.pipeline_helpers import make_repo, make_settings
 from tests.service_helpers import make_pr
 
 
+FAKE_KEY = "AKI" + "AABCDEFGHIJKLMNOP"   # built from parts so this file holds no secret-looking text
+
 class FakeOllama:
     def __init__(self, installed=("qwen2.5-coder:7b",), up=True, respond=None):
         self.installed, self.up, self.respond = set(installed), up, respond
@@ -149,15 +151,15 @@ class UntrustedInputTests(TriageTestCase):
         self.assertEqual(user.count("<untrusted>"), 1)
 
     def test_secrets_are_masked_and_secret_findings_not_sent(self):
-        repo = make_repo(self, {"a.py": 'x = 1\npassword = "hunter2hunter2"\ntoken = "AKIAABCDEFGHIJKLMNOP"\n'})
+        repo = make_repo(self, {"a.py": 'x = 1\npassword = "hunter2hunter2"\ntoken = "' + FAKE_KEY + '"\n'})
         self.repo = repo
         secret = finding(Severity.CRITICAL, tool="secret-scan", rule="aws-access-key-id", line=3)
         agent, fake = self.agent(FakeOllama())
-        patch = '@@ -0,0 +1,2 @@\n+password = "hunter2hunter2"\n+token = "AKIAABCDEFGHIJKLMNOP"'
+        patch = '@@ -0,0 +1,2 @@\n+password = "hunter2hunter2"\n+token = "' + FAKE_KEY + '"'
         agent.run(self.ctx([secret, finding(line=1)], patch=patch))
         everything = " ".join(u for _, u in fake.calls)
         self.assertNotIn("hunter2hunter2", everything)
-        self.assertNotIn("AKIAABCDEFGHIJKLMNOP", everything)
+        self.assertNotIn(FAKE_KEY, everything)
         self.assertEqual(sum("secret-scan" in u for _, u in fake.calls), 0)
 
     def test_path_outside_the_repository_is_never_read(self):

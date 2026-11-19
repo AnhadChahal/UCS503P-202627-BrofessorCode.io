@@ -51,6 +51,9 @@ def check_login(store: Store, settings: PipelineSettings, username: str, passwor
     username = (username or "").strip()[:64]
     lock_seconds = settings.lockout_minutes * 60
     until = store.locked_until(username, ip, settings.lockout_attempts, lock_seconds)
+    if settings.lockout_user_attempts > 0:   # the same account from many addresses (a tunnel hides the real one)
+        wide = store.locked_until(username, None, settings.lockout_user_attempts, lock_seconds)
+        until = max((u for u in (until, wide) if u is not None), default=None)
     if until is not None:
         minutes = max(1, int((until - store.clock()) / 60) + 1)
         return LoginResult(False, f"Too many failed attempts. Log-in is disabled for about {minutes} more minute(s).")

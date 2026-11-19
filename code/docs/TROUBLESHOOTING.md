@@ -7,7 +7,7 @@ Run all commands from the project root (the folder that contains `webhook/`, `pi
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `ModuleNotFoundError: No module named 'flask'` | packages not installed in this venv | `pip install -r requirements.txt -r requirements-pipeline.txt` |
+| `ModuleNotFoundError: No module named 'flask'` | packages not installed in this venv | `pip install -r requirements.txt` |
 | `No module named 'webhook'` when running `webhook/app.py` | started as a file | `python -m webhook.app` from the project root |
 | `GITHUB_WEBHOOK_SECRET is not set` | no `.env`, or it is in another folder | create `.env` in the project root |
 | `ImportError: cannot import name 'run_pipeline' from 'webhook.pipeline'` | old `webhook/app.py` with a changed `webhook/pipeline.py` | use the new `webhook/app.py` (it no longer imports that file) |
@@ -57,3 +57,19 @@ Run all commands from the project root (the folder that contains `webhook/`, `pi
 |---|---|
 | `error collecting tests/test_webhook.py` | you are not in the project root, or `webhook/` is missing from it |
 | Tests pass here but a tool-dependent run differs | the status of runs with `bandit` installed can differ from runs without it (missing tools go to a person); the automatic tests do not depend on installed tools |
+
+## Remote access (Release 7)
+
+See `docs/NGROK_REMOTE.md` for the full table. The three most common:
+
+| Symptom | Cause and fix |
+|---|---|
+| GitHub shows 502 for the webhook | The webhook is not running or `PORT` differs from the one the gateway forwards to. Start with `python scripts/start_all.py --gateway`. |
+| Dashboard log-in loops back to the form behind the tunnel | Use the https address and set `TRUST_PROXY=true` and `DASHBOARD_URL=https://...`; the cookie is only stored for HTTPS visits through the proxy. |
+| `python scripts/doctor.py` says TRUST_PROXY with a reachable dashboard | Set `DASHBOARD_HOST=127.0.0.1`. TRUST_PROXY must never be on when the dashboard can be reached directly. |
+
+## .env file
+
+| Symptom | Cause and fix |
+|---|---|
+| A setting you left blank behaves as if it had a strange value (for example deployment is "enabled" with a workflow name that is a sentence) | A comment written after a blank value on the same line is read as the value. Put comments on their own line above the setting, as `.env.example` does. |

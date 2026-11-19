@@ -11,12 +11,12 @@
                                                                             (the PR, its code, the findings, live progress)
 ```
 
-Only the webhook goes through ngrok. The dashboard and Ollama never leave laptop A, so the Approve button is not
+Only the webhook goes through ngrok in this setup (to let a second person open the dashboard remotely too, see `NGROK_REMOTE.md`). The dashboard and Ollama never leave laptop A, so the Approve button is not
 exposed to the internet. Laptop B needs nothing installed except git and a browser.
 
 ## Laptop A: one-time setup
 
-1. Unpack, then from the project root (`code/`): `python -m venv venv && source venv/bin/activate && pip install -r requirements-pipeline.txt`
+1. Unpack, then from the project root (`code/`): `python -m venv venv && source venv/bin/activate && pip install -r requirements.txt`
    (it installs flask, ruff, bandit and pip-audit; bandit is needed for a live BLOCK).
 2. `.env` in the project root:
    ```

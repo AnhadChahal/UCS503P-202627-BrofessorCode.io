@@ -110,6 +110,20 @@ def run_checks(settings: PipelineSettings, env: Mapping[str, str] | None = None,
     if webhook_port == 5000 and platform == "darwin":
         add("warn", "PORT=5000: on macOS, AirPlay Receiver uses port 5000 and GitHub will get 403. Use PORT=5001.")
 
+    # ---- remote access (tunnel) ----
+    public = settings.dashboard_url.startswith("https://")
+    if settings.trust_proxy and settings.dashboard_host not in ("127.0.0.1", "localhost", "::1"):
+        add("fail", "TRUST_PROXY=true but the dashboard listens on " + settings.dashboard_host + ". Anyone who can reach it "
+                    "directly could fake their address. Keep DASHBOARD_HOST=127.0.0.1 when TRUST_PROXY is on.")
+    if public and not settings.trust_proxy:
+        add("warn", "DASHBOARD_URL is https but TRUST_PROXY is false: the dashboard will not see the real client address "
+                    "or the https scheme behind the tunnel. Set TRUST_PROXY=true and use the gateway.")
+    if settings.trust_proxy:
+        add("ok", "TRUST_PROXY is on: only run the dashboard behind the gateway on this machine")
+    if public and not env.get("NGROK_ALLOWED_EMAILS", "").strip():
+        add("warn", "DASHBOARD_URL is public but NGROK_ALLOWED_EMAILS is empty: the tunnel would not ask for a sign-in "
+                    "(python scripts/start_tunnel.py refuses to start that way unless you pass --no-signin).")
+
     # ---- deployment ----
     if settings.deploy_workflow:
         add("ok", f"deployment enabled: workflow {settings.deploy_workflow}")

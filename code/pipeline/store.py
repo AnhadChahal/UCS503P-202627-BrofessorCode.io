@@ -379,15 +379,17 @@ class Store:
             c.execute("INSERT INTO login_attempts (username, ip, ts, ok) VALUES (?,?,?,?)",
                       (username, ip, self.clock(), 1 if ok else 0))
 
-    def locked_until(self, username: str, ip: str, max_attempts: int, lockout_seconds: float) -> float | None:
+    def locked_until(self, username: str, ip: str | None, max_attempts: int, lockout_seconds: float) -> float | None:
         """After `max_attempts` failures in a row from the same account and address, log-in is
-        refused for `lockout_seconds`, counted from the last of those failures (FR6, QR16)."""
+        refused for `lockout_seconds`, counted from the last of those failures (FR6, QR16).
+        With ip=None the failures of that account from every address are counted together, which
+        stops an attacker who changes address between guesses."""
+        where, args = ("username=?", (username,)) if ip is None else ("username=? AND ip=?", (username, ip))
         with self._read() as c:
-            last_ok = c.execute("SELECT MAX(ts) AS t FROM login_attempts WHERE username=? AND ip=? AND ok=1",
-                                (username, ip)).fetchone()["t"] or 0
+            last_ok = c.execute(f"SELECT MAX(ts) AS t FROM login_attempts WHERE {where} AND ok=1",
+                                args).fetchone()["t"] or 0
             fails = [r["ts"] for r in c.execute(
-                "SELECT ts FROM login_attempts WHERE username=? AND ip=? AND ok=0 AND ts>? ORDER BY ts",
-                (username, ip, last_ok))]
+                f"SELECT ts FROM login_attempts WHERE {where} AND ok=0 AND ts>? ORDER BY ts", (*args, last_ok))]
         streak, until = 0, None
         for ts in fails:
             if until is not None and ts < until:

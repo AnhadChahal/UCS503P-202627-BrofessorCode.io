@@ -57,6 +57,11 @@ class PipelineSettings:
     lockout_attempts: int = 3
     lockout_minutes: int = 30
     dashboard_url: str = ""                  # base address used for links in comments, e.g. http://127.0.0.1:5002
+    # ---- Release 7: remote access through a tunnel ----
+    trust_proxy: bool = False                 # believe X-Forwarded-For/-Proto/-Host: only when a proxy we run sits in front
+    lockout_user_attempts: int = 10           # failures for one account from ANY address before it is locked
+    gateway_port: int = 8080                  # the one local port the tunnel points at (see scripts/gateway.py)
+    webhook_port: int = 5000                  # PORT of the webhook app; the gateway forwards /webhook to it
     # ---- Release 3: local LLM (Ollama). Advisory only: it never changes a verdict or a routing decision ----
     llm_enabled: bool = False
     ollama_url: str = "http://127.0.0.1:11434"
@@ -104,6 +109,10 @@ def load_settings() -> PipelineSettings:
         lockout_attempts=_int("LOCKOUT_ATTEMPTS", 3),
         lockout_minutes=_int("LOCKOUT_MINUTES", 30),
         dashboard_url=os.getenv("DASHBOARD_URL", "").strip().rstrip("/"),
+        trust_proxy=_flag("TRUST_PROXY", False),
+        lockout_user_attempts=_int("LOCKOUT_USER_ATTEMPTS", 10),
+        gateway_port=_int("GATEWAY_PORT", 8080),
+        webhook_port=_int("PORT", 5000),
         llm_enabled=_flag("LLM_ENABLED", False),
         ollama_url=os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").strip().rstrip("/"),
         llm_allow_remote=_flag("LLM_ALLOW_REMOTE", False),

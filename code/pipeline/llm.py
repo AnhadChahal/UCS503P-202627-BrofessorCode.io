@@ -100,6 +100,16 @@ class OllamaClient:
             raise LLMError("the answer was not a JSON object")
         return answer
 
+    def warm(self, model: str) -> None:
+        """Load a model into memory without asking it anything (an empty generate request)."""
+        try:
+            resp = self.session.post(f"{self.base_url}/api/generate", json={"model": model, "keep_alive": self.keep_alive},
+                                     timeout=(3, max(self.timeout, 120)))
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            raise LLMError(f"{type(exc).__name__} while loading {model}") from exc
+        self.loaded = model
+
     def unload(self, model: str) -> None:
         """Ask Ollama to drop a model from memory now (keep_alive 0). Best effort."""
         try:

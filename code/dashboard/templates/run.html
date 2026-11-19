@@ -21,7 +21,7 @@
     <span class="stage {% if st.state == 'done' %}{{ st.verdict }}{% else %}{{ st.state }}{% endif %}">
       {{ st.agent|replace('Agent', '') }}
       <small>{% if st.state == 'running' %}working...{% elif st.state == 'done' %}{{ st.verdict|lower }}{% elif st.state == 'skipped' %}skipped{% else %}waiting{% endif %}</small>
-    </span>{% if not loop.last %}<span style="align-self:center">&rarr;</span>{% endif %}
+    </span>{% if not loop.last %}<span class="arrow">&rarr;</span>{% endif %}
   {% endfor %}
 </div>
 {% endif %}
@@ -54,11 +54,11 @@
     <span class="meta">{{ f.status }} <span class="add-n">+{{ f.additions }}</span> <span class="del-n">-{{ f.deletions }}</span></span>
     {% if f.count %}<span class="pill">{{ f.count }} finding{{ 's' if f.count != 1 }}</span>{% endif %}</summary>
   {% for n in f.unplaced %}
-    <div style="padding:6px 12px;background:#fff8e1;border-left:4px solid #f5a623">
+    <div class="unplaced">
       <strong>{{ n.sev_name }}</strong> {{ n.rule }}: {{ n.message }}
       {% if n.ai %}<br><small>AI triage: <strong>{{ n.ai.label|ai_label }}</strong>. {{ n.ai.reason }}</small>{% endif %}</div>
   {% endfor %}
-  {% if f.no_patch %}<p style="padding:6px 12px">No diff is available for this file (binary, or too large for GitHub to show).</p>
+  {% if f.no_patch %}<p class="pad">No diff is available for this file (binary, or too large for GitHub to show).</p>
   {% else %}
   <table class="diff">
     {% for ln in f.lines %}
@@ -72,7 +72,7 @@
       {% endfor %}
     {% endfor %}
   </table>
-  {% if f.cut %}<p style="padding:6px 12px"><em>Only the first part of this diff is shown.</em></p>{% endif %}
+  {% if f.cut %}<p class="pad"><em>Only the first part of this diff is shown.</em></p>{% endif %}
   {% endif %}
 </details>
 {% else %}<p>{% if live %}The changed files appear here as soon as the review has fetched them.{% else %}No changed files were stored for this run.{% endif %}</p>{% endfor %}

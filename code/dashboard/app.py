@@ -1,7 +1,7 @@
 """The on-call engineer's dashboard (FR6 to FR12, UC8, UC9).
 
-A small server-rendered Flask app. Run it on the loopback interface only and expose just the
-webhook route through the tunnel, because the approve button is the most sensitive control."""
+A small server-rendered Flask app. Run it on the loopback interface only. For remote use put it behind the gateway and a tunnel that
+asks for a sign-in first (docs/NGROK_REMOTE.md): the approve button is the most sensitive control."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ import secrets
 from functools import wraps
 
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask.sessions import SecureCookieSessionInterface
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from pipeline.auth import check_login
 from pipeline.models import Severity, finding_key
@@ -18,6 +20,14 @@ from pipeline.status import collect_status
 from dashboard.diffview import build_file_views
 from pipeline.service import BLOCKABLE, ReviewService
 from pipeline.store import ALL_STATUSES
+
+
+class _SessionInterface(SecureCookieSessionInterface):
+    """The session cookie is marked Secure whenever THIS request came over https (directly, or through a trusted
+    proxy), so the same dashboard works on http://127.0.0.1 on the server and on https through a tunnel."""
+
+    def get_cookie_secure(self, app) -> bool:  # noqa: ANN001
+        return request.is_secure
 
 
 def _signature(run: dict, steps: list[dict]) -> str:
@@ -31,6 +41,11 @@ def create_app(service: ReviewService, secret_key: str | None = None, banner: st
         raise RuntimeError("DASHBOARD_SECRET_KEY is not set (use 16 or more random characters).")
 
     app = Flask(__name__)
+    app.session_interface = _SessionInterface()
+    if settings.trust_proxy:
+        # Believe the X-Forwarded-* headers of ONE proxy hop (the tunnel agent / gateway on this machine).
+        # Never switch this on if the dashboard can also be reached directly from other machines.
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)  # type: ignore[method-assign]
     app.config.update(SECRET_KEY=key, SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                       PERMANENT_SESSION_LIFETIME=8 * 3600, MAX_CONTENT_LENGTH=64 * 1024)
 
@@ -63,9 +78,14 @@ def create_app(service: ReviewService, secret_key: str | None = None, banner: st
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Cache-Control"] = "no-store"
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        resp.headers["X-Robots-Tag"] = "noindex, nofollow"
         resp.headers["Content-Security-Policy"] = ("default-src 'none'; script-src 'self'; connect-src 'self'; "
-                                                   "style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; "
+                                                   "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                                                   "font-src 'self'; form-action 'self'; base-uri 'none'; "
                                                    "frame-ancestors 'none'")
+        if request.is_secure:
+            resp.headers["Strict-Transport-Security"] = "max-age=86400"
         return resp
 
     def login_required(view):

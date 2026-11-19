@@ -1,0 +1,3 @@
+{
+  "buildCommand": "python scripts/demo.py seed && mkdir -p public/static && cp -r dashboard/static/. public/static/"
+}

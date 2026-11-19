@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Runs{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="5">{% endblock %}
+{% block content %}
+<h2>Runs <small style="font-weight:400;color:#666">(refreshes every 5 s)</small></h2>
+<p class="filters">
+  <a href="{{ url_for('runs') }}">{% if not status %}<strong>All</strong>{% else %}All{% endif %}</a>
+  {% for s in statuses %}
+    <a href="{{ url_for('runs', status=s) }}">{% if s == status %}<strong>{{ s|pretty }}</strong>{% else %}{{ s|pretty }}{% endif %}</a>
+  {% endfor %}
+</p>
+{% if runs %}
+<table>
+  <tr><th>Run</th><th>Pull request</th><th>Status</th><th>Risk</th><th>Commit</th><th>Updated</th></tr>
+  {% for r in runs %}
+  <tr>
+    <td><a href="{{ url_for('run_detail', run_id=r.id) }}">#{{ r.id }}</a></td>
+    <td>{{ r.repo }}#{{ r.pr_number }}<br>{{ r.title }}</td>
+    <td><span class="badge {{ r.status }}">{{ r.status|pretty }}</span>{% if r.id in working %}<br><small>now: {{ working[r.id] }}</small>{% endif %}</td>
+    <td>{{ r.risk_score if r.risk_score is not none else '-' }}</td>
+    <td><code>{{ r.head_sha[:7] }}</code></td>
+    <td>{{ r.updated_at|ts }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No runs yet{% if status %} with the status "{{ status|pretty }}"{% endif %}.</p>
+{% endif %}
+{% endblock %}

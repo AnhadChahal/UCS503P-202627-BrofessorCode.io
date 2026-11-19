@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="10">{% endblock %}
+{% block content %}
+<h2>System status <small style="font-weight:400;color:#666">(refreshes every 10 s)</small></h2>
+
+<div class="box">
+  <h3>Review worker</h3>
+  {% if info.worker.alive %}<span class="ok-dot">&#9679;</span> running (last sign of life {{ info.worker.seconds_ago }} s ago)
+  {% elif info.worker.seconds_ago is none %}<span class="bad-dot">&#9679;</span> no sign of the worker yet. Start the webhook process: <code>python -m webhook.app</code> or <code>python scripts/start_all.py</code>.
+  {% else %}<span class="bad-dot">&#9679;</span> not running (last sign of life {{ info.worker.seconds_ago }} s ago). New PRs will queue until it is started again.{% endif %}
+  <p>Queued: <strong>{{ info.queue.queued }}</strong> &middot; being reviewed: <strong>{{ info.queue.running }}</strong> &middot;
+     waiting for a person: <strong>{{ info.queue.awaiting }}</strong></p>
+  {% for w in info.queue.working %}<p>Working on <a href="{{ url_for('run_detail', run_id=w.id) }}">{{ w.repo }}#{{ w.pr_number }}</a></p>{% endfor %}
+</div>
+
+<div class="box">
+  <h3>Local language model (Ollama)</h3>
+  {% if not info.ollama.enabled %}
+    <p>AI triage is off (<code>LLM_ENABLED=false</code>). The review does not need it.</p>
+  {% else %}
+    {% if info.ollama.reachable %}<span class="ok-dot">&#9679;</span> reachable at {{ info.ollama.url }}
+    {% else %}<span class="bad-dot">&#9679;</span> not reachable at {{ info.ollama.url }}. {{ info.ollama.error }} Reviews continue without AI notes.{% endif %}
+    <p>Light model: <code>{{ info.ollama.light }}</code>
+       {% if info.ollama.reachable %}{% if info.ollama.light in info.ollama.installed %}(installed){% else %}<strong>(not installed: <code>ollama pull {{ info.ollama.light }}</code>)</strong>{% endif %}{% endif %}
+       {% if info.ollama.heavy %}<br>Heavy model: <code>{{ info.ollama.heavy }}</code>
+         {% if info.ollama.reachable %}{% if info.ollama.heavy in info.ollama.installed %}(installed){% else %}<strong>(not installed)</strong>{% endif %}{% endif %}{% endif %}</p>
+    <p>In memory right now:
+      {% for m in info.ollama.loaded %}<code>{{ m.name }}</code> ({{ m.size }}){% if not loop.last %}, {% endif %}{% else %}nothing (models are unloaded when idle){% endfor %}</p>
+  {% endif %}
+</div>
+
+<div class="box">
+  <h3>Settings in effect</h3>
+  <table>{% for k, v in info.settings.items() %}<tr><th style="width:30%">{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
+</div>
+{% endblock %}

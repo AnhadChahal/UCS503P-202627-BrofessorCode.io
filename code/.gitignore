@@ -1,0 +1,10 @@
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.db
+payloads/
+demo_data/
+ngrok-policy.yml
+.DS_Store

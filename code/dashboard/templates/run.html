@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Run #{{ run.id }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('runs') }}">&larr; All runs</a></p>
+<h2>{{ run.title or 'Pull request' }}</h2>
+<p>
+  <strong>{{ run.repo }}#{{ run.pr_number }}</strong> by {{ run.author or 'unknown' }}
+  {% if run.head_branch %}&middot; <code>{{ run.head_branch }}</code> &rarr; <code>{{ run.base_branch }}</code>{% endif %}
+  &middot; commit <code>{{ run.head_sha[:7] }}</code>
+  {% if pr_link %}&middot; <a href="{{ pr_link }}" target="_blank" rel="noopener noreferrer">open on GitHub</a>{% endif %}<br>
+  Run #{{ run.id }} &middot; status: <span class="badge {{ run.status }}">{{ run.status|pretty }}</span>
+  &middot; {{ run.file_count }} changed file(s) &middot; risk {{ run.risk_score if run.risk_score is not none else '-' }}/100
+</p>
+
+{% if live %}<div id="live" data-url="{{ url_for('run_live', run_id=run.id) }}" data-sig="{{ sig }}"></div>
+<script src="{{ url_for('static', filename='live.js') }}"></script>{% endif %}
+
+{% if steps %}
+<div class="stages">
+  {% for st in steps %}
+    <span class="stage {% if st.state == 'done' %}{{ st.verdict }}{% else %}{{ st.state }}{% endif %}">
+      {{ st.agent|replace('Agent', '') }}
+      <small>{% if st.state == 'running' %}working...{% elif st.state == 'done' %}{{ st.verdict|lower }}{% elif st.state == 'skipped' %}skipped{% else %}waiting{% endif %}</small>
+    </span>{% if not loop.last %}<span style="align-self:center">&rarr;</span>{% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% if live %}<p><small>This page updates by itself while the review runs.</small></p>{% endif %}
+
+{% if summary %}<div class="box"><strong>AI summary</strong> <small>(written by a local model, may be wrong)</small><br>{{ summary }}</div>{% endif %}
+{% if run.escalation_reason %}<p><strong>Why a person is needed:</strong> {{ run.escalation_reason }}</p>{% endif %}
+{% if run.error %}<p><strong>Error:</strong> {{ run.error }}</p>{% endif %}
+{% if run.deployment %}<p><strong>Deployment:</strong> {{ run.deployment }}</p>{% endif %}
+
+{% if can_decide or can_block %}
+<div class="box">
+  <h3>Decision</h3>
+  <form method="post" action="{{ url_for('decision', run_id=run.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <p><label>Reason (required to reject or block)<br><textarea name="reason" rows="2" maxlength="1000"></textarea></label></p>
+    {% if can_decide %}
+      <button class="approve" name="action" value="approve">Approve</button>
+      <button class="reject" name="action" value="reject">Reject</button>
+    {% endif %}
+    {% if can_block %}<button class="block" name="action" value="block">Block</button>{% endif %}
+  </form>
+</div>
+{% endif %}
+
+<h3>Changed code</h3>
+{% for f in files %}
+<details class="file" {% if f.count or loop.index <= 3 %}open{% endif %}>
+  <summary>{{ f.filename }}
+    <span class="meta">{{ f.status }} <span class="add-n">+{{ f.additions }}</span> <span class="del-n">-{{ f.deletions }}</span></span>
+    {% if f.count %}<span class="pill">{{ f.count }} finding{{ 's' if f.count != 1 }}</span>{% endif %}</summary>
+  {% for n in f.unplaced %}
+    <div style="padding:6px 12px;background:#fff8e1;border-left:4px solid #f5a623">
+      <strong>{{ n.sev_name }}</strong> {{ n.rule }}: {{ n.message }}
+      {% if n.ai %}<br><small>AI triage: <strong>{{ n.ai.label|ai_label }}</strong>. {{ n.ai.reason }}</small>{% endif %}</div>
+  {% endfor %}
+  {% if f.no_patch %}<p style="padding:6px 12px">No diff is available for this file (binary, or too large for GitHub to show).</p>
+  {% else %}
+  <table class="diff">
+    {% for ln in f.lines %}
+      {% if ln.kind == 'hunk' %}<tr class="hunk"><td class="n"></td><td class="n"></td><td class="t">{{ ln.text }}</td></tr>
+      {% else %}<tr class="{{ ln.kind }}"><td class="n">{{ ln.old if ln.old is not none }}</td><td class="n">{{ ln.new if ln.new is not none }}</td>
+        <td class="t">{% if ln.kind == 'add' %}+{% elif ln.kind == 'del' %}-{% else %}&nbsp;{% endif %}{{ ln.text }}</td></tr>{% endif %}
+      {% for n in ln.notes %}
+      <tr class="note sev{{ n.severity }}"><td colspan="3"><strong>{{ n.sev_name }}</strong> &middot; {{ n.tool }} &middot; {{ n.rule }}<br>{{ n.message }}
+        {% if n.suggestion %}<br><em>Fix: {{ n.suggestion }}</em>{% endif %}
+        {% if n.ai %}<br><small>AI triage ({{ n.ai.model }}): <strong>{{ n.ai.label|ai_label }}</strong>. {{ n.ai.reason }}</small>{% endif %}</td></tr>
+      {% endfor %}
+    {% endfor %}
+  </table>
+  {% if f.cut %}<p style="padding:6px 12px"><em>Only the first part of this diff is shown.</em></p>{% endif %}
+  {% endif %}
+</details>
+{% else %}<p>{% if live %}The changed files appear here as soon as the review has fetched them.{% else %}No changed files were stored for this run.{% endif %}</p>{% endfor %}
+
+<h3>Agents</h3>
+<table>
+  <tr><th>Agent</th><th>Verdict</th><th>Findings</th><th>Checks</th></tr>
+  {% for v in verdicts %}
+  <tr><td>{{ v.agent }}</td><td>{{ v.status }}</td><td>{{ v.findings|length }}</td>
+      <td>{% for n in v.notes %}{{ n }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+  {% else %}<tr><td colspan="4">No results yet.</td></tr>{% endfor %}
+</table>
+
+{% if factors %}
+<h3>Risk factors</h3>
+<ul>{% for f in factors %}<li>{{ f }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h3>All findings</h3>
+<table>
+  <tr><th>Severity</th><th>Where</th><th>Rule</th><th>Details</th></tr>
+  {% for v in verdicts %}{% for f in v.findings if f.severity >= 1 %}
+  <tr><td>{{ f.severity|sev }}</td>
+      <td>{% if f.file %}<code>{{ f.file }}{% if f.line %}:{{ f.line }}{% endif %}</code>{% else %}-{% endif %}</td>
+      <td>{{ f.rule }}</td>
+      <td>{{ f.message }}{% if f.suggestion %}<br><em>Fix: {{ f.suggestion }}</em>{% endif %}
+        {% set t = triage.get(f|fkey) %}{% if t %}<br><small>AI triage ({{ t.model }}): <strong>{{ t.label|ai_label }}</strong>. {{ t.reason }}</small>{% endif %}</td></tr>
+  {% endfor %}{% endfor %}
+</table>
+
+<h3>Decisions</h3>
+<table>
+  <tr><th>When</th><th>Decision</th><th>By</th><th>Reason</th></tr>
+  {% for d in decisions %}
+  <tr><td>{{ d.decided_at|ts }}</td><td>{{ d.decision }}</td><td>{{ d.decided_by }}</td><td>{{ d.reason }}</td></tr>
+  {% else %}<tr><td colspan="4">No decision yet.</td></tr>{% endfor %}
+</table>
+
+<h3>Audit timeline</h3>
+<table>
+  <tr><th>When</th><th>Who</th><th>Event</th><th>Detail</th></tr>
+  {% for a in audit %}
+  <tr><td>{{ a.ts|ts }}</td><td>{{ a.actor }}</td><td>{{ a.event }}</td><td>{{ a.detail }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}
